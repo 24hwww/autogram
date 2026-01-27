@@ -1,38 +1,79 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { 
+  images, usageLimits,
+  type ImageModel, type InsertImage, 
+  type UsageLimit, 
+  DAILY_IMAGE_LIMIT 
+} from "@shared/schema";
+import { eq, sql } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Images
+  getImages(): Promise<ImageModel[]>;
+  getImage(id: number): Promise<ImageModel | undefined>;
+  createImage(image: InsertImage): Promise<ImageModel>;
+  updateImage(id: number, updates: Partial<ImageModel>): Promise<ImageModel>;
+  deleteImage(id: number): Promise<void>;
+  
+  // Scheduler
+  getScheduledImagesToPublish(): Promise<ImageModel[]>;
+  
+  // Usage Limits
+  getUsageLimit(date: string): Promise<UsageLimit>;
+  incrementUsageCount(date: string): Promise<UsageLimit>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getImages(): Promise<ImageModel[]> {
+    return await db.select().from(images).orderBy(sql`${images.createdAt} DESC`);
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getImage(id: number): Promise<ImageModel | undefined> {
+    const [image] = await db.select().from(images).where(eq(images.id, id));
+    return image;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createImage(insertImage: InsertImage): Promise<ImageModel> {
+    const [image] = await db.insert(images).values(insertImage).returning();
+    return image;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateImage(id: number, updates: Partial<ImageModel>): Promise<ImageModel> {
+    const [updated] = await db.update(images)
+      .set(updates)
+      .where(eq(images.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteImage(id: number): Promise<void> {
+    await db.delete(images).where(eq(images.id, id));
+  }
+
+  async getScheduledImagesToPublish(): Promise<ImageModel[]> {
+    // Find images with status 'scheduled' and scheduledAt <= now
+    return await db.select().from(images)
+      .where(sql`${images.status} = 'scheduled' AND ${images.scheduledAt} <= NOW()`);
+  }
+
+  async getUsageLimit(date: string): Promise<UsageLimit> {
+    const [limit] = await db.select().from(usageLimits).where(eq(usageLimits.date, date));
+    if (!limit) {
+      // Create if not exists
+      const [newLimit] = await db.insert(usageLimits).values({ date, imagesGenerated: 0 }).returning();
+      return newLimit;
+    }
+    return limit;
+  }
+
+  async incrementUsageCount(date: string): Promise<UsageLimit> {
+    const limit = await this.getUsageLimit(date);
+    const [updated] = await db.update(usageLimits)
+      .set({ imagesGenerated: limit.imagesGenerated + 1 })
+      .where(eq(usageLimits.date, date))
+      .returning();
+    return updated;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
