@@ -1,0 +1,247 @@
+🎭 Rol
+
+Actuá como un Senior Full-Stack Engineer experto en Bun, Google Gemini API, automatización, schedulers internos y APIs privadas de Instagram.
+
+🎯 Objetivo
+
+Construir una plataforma de autopublicaciones de imágenes en Instagram que:
+
+Genere imágenes con Gemini (modelo Nano Banana)
+
+Controle límites diarios de generación
+
+Publique imágenes automáticamente o manualmente
+
+Use scheduler interno en Bun
+
+Administre todo vía /api
+
+UI moderna con React + shadcn
+
+Persistencia con SQLite usando bun:sqlite
+
+🧱 Stack obligatorio
+Backend
+
+Bun
+
+API con Bun.serve()
+
+instagram-private-api
+
+Google Gemini API
+
+SQLite con bun:sqlite
+
+Scheduler interno (setInterval)
+
+.env para secretos
+
+Frontend
+
+React + Vite
+
+shadcn/ui
+
+Tailwind
+
+Fetch API
+
+🔐 Variables de entorno (.env)
+INSTAGRAM_USERNAME=
+INSTAGRAM_PASSWORD=
+INSTAGRAM_SESSION=
+
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-1.5-nano-banana
+
+DAILY_IMAGE_LIMIT=20
+AUTO_PUBLISH_INTERVAL=60000
+
+🗄️ Base de datos (SQLite)
+Tabla images
+CREATE TABLE images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  prompt TEXT NOT NULL,
+  caption TEXT,
+  image_path TEXT NOT NULL,
+  status TEXT CHECK(status IN ('pending','scheduled','published','failed')) NOT NULL,
+  scheduled_at DATETIME,
+  instagram_media_id TEXT,
+  error TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  published_at DATETIME
+);
+
+Tabla usage_limits
+CREATE TABLE usage_limits (
+  date TEXT PRIMARY KEY,
+  images_generated INTEGER DEFAULT 0
+);
+
+🧠 Control de límites diarios (CRÍTICO)
+
+Antes de generar una imagen:
+
+Consultar:
+
+SELECT images_generated FROM usage_limits WHERE date = DATE('now');
+
+
+Si no existe → crear fila
+
+Si images_generated >= DAILY_IMAGE_LIMIT:
+
+Bloquear generación
+
+Retornar error 429 Too Many Requests
+
+Si permite:
+
+Incrementar contador
+
+Generar imagen con Gemini
+
+🌐 Gemini – Generación de imágenes
+
+Usar Google Gemini API
+
+Modelo: Nano Banana
+
+Prompt enriquecido automáticamente:
+
+calidad visual
+
+formato cuadrado
+
+estilo Instagram-ready
+
+Guardar imagen en /storage/images/{uuid}.png
+
+🔁 Flujo de generación
+
+POST /api/generate
+
+Validar límite diario
+
+Llamar a Gemini Nano Banana
+
+Guardar imagen local
+
+Insertar registro en images
+
+Si autoSchedule = true → status = scheduled
+
+🌐 API REST (/api)
+POST /api/generate
+{
+  "prompt": "A futuristic AI queen",
+  "caption": "👑 IA vibes",
+  "autoSchedule": true,
+  "scheduleAt": "2026-01-28T18:00:00Z"
+}
+
+POST /api/publish/:id
+
+Publica inmediatamente
+
+POST /api/schedule/:id
+
+Programa publicación
+
+GET /api/images
+
+Lista imágenes
+
+GET /api/limits
+
+Devuelve uso diario y límite restante
+
+⏱️ Scheduler interno en Bun
+
+Corre cada AUTO_PUBLISH_INTERVAL
+
+Busca imágenes:
+
+WHERE status = 'scheduled'
+AND scheduled_at <= datetime('now')
+LIMIT 1;
+
+
+Publica en Instagram
+
+Maneja errores y rate limits
+
+🤳 Instagram
+
+instagram-private-api
+
+Login persistente
+
+Publicación en feed (imagen simple)
+
+Guardar media.id
+
+Retry controlado
+
+🖥️ UI (React + shadcn)
+Sidebar
+
+Prompt textarea
+
+Caption input
+
+DateTime picker
+
+Switch auto publicar
+
+Contador:
+
+X / DAILY_IMAGE_LIMIT
+
+Botón generar (deshabilitado si se alcanza límite)
+
+Grid
+
+Cards con imagen
+
+Status badge:
+
+🟡 pending
+
+🔵 scheduled
+
+🟢 published
+
+🔴 failed
+
+Acciones manuales
+
+🧠 Arquitectura sugerida
+backend/
+ ├─ api/
+ ├─ gemini/
+ │   └─ generateImage.ts
+ ├─ instagram/
+ ├─ scheduler/
+ ├─ db/
+ ├─ storage/images/
+ └─ server.ts
+
+⚠️ Reglas estrictas
+
+NO Express
+
+NO cron
+
+NO Puppeteer
+
+NO Firebase
+
+Todo corre dentro de Bun
+
+Código listo para producción
+
+🧠 Mentalidad
+
+Esto es un motor de autopublicaciones escalable, no un experimento.
