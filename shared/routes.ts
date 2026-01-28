@@ -44,6 +44,8 @@ export const api = {
         autoSchedule: z.boolean().optional(),
         scheduleAt: z.string().optional(),
         scheduleInterval: z.number().optional(),
+        isCarousel: z.boolean().optional(),
+        imageCount: z.number().min(1).max(10).optional(),
       }),
       responses: {
         201: z.custom<typeof images.$inferSelect>(),

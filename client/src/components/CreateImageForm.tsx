@@ -32,6 +32,8 @@ const formSchema = z.object({
   autoSchedule: z.boolean().default(false),
   scheduleAt: z.string().optional(),
   scheduleInterval: z.string().optional(),
+  isCarousel: z.boolean().default(false),
+  imageCount: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -42,6 +44,13 @@ const INTERVAL_OPTIONS = [
   { label: "1 Hour", value: "60" },
   { label: "8 Hours", value: "480" },
   { label: "24 Hours", value: "1440" },
+];
+
+const CAROUSEL_COUNT_OPTIONS = [
+  { label: "2 Images", value: "2" },
+  { label: "3 Images", value: "3" },
+  { label: "4 Images", value: "4" },
+  { label: "5 Images", value: "5" },
 ];
 
 export function CreateImageForm() {
@@ -56,15 +65,18 @@ export function CreateImageForm() {
       caption: "",
       autoSchedule: false,
       scheduleInterval: "60",
+      isCarousel: false,
+      imageCount: "2",
     },
   });
 
-  const isLimitReached = limits?.remaining === 0;
+  const isLimitReached = (limits?.remaining || 0) < (form.watch("isCarousel") ? parseInt(form.watch("imageCount") || "2") : 1);
 
   function onSubmit(data: FormValues) {
     const payload = {
       ...data,
       scheduleInterval: data.scheduleInterval ? parseInt(data.scheduleInterval) : undefined,
+      imageCount: data.isCarousel ? parseInt(data.imageCount || "2") : 1,
     };
     generate.mutate(payload, {
       onSuccess: () => {
@@ -141,6 +153,56 @@ export function CreateImageForm() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="isCarousel"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-background/30">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Carousel (Album)</FormLabel>
+                        <FormDescription>
+                          Create multiple images
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("isCarousel") && (
+                  <FormField
+                    control={form.control}
+                    name="imageCount"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col justify-center rounded-lg border p-4 bg-background/30">
+                        <FormLabel className="flex items-center gap-2 mb-2">
+                          <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+                          Image Count
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-background/50 border-none">
+                              <SelectValue placeholder="Count" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CAROUSEL_COUNT_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {form.watch("autoSchedule") && (
                   <FormField

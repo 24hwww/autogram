@@ -58,17 +58,23 @@ export async function registerRoutes(
       const input = api.images.generate.input.parse(req.body);
 
       // 3. Generate with Gemini
-      // Note: generateImage returns a base64 string
-      const base64DataUrl = await generateImage(input.prompt + " instagram style, high quality, square aspect ratio");
+      const imageCount = input.isCarousel ? (input.imageCount || 2) : 1;
+      const imagePaths: string[] = [];
       
-      // 4. Save Image to Disk
-      const base64Data = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
-      const buffer = Buffer.from(base64Data, 'base64');
-      const filename = `${crypto.randomUUID()}.png`;
-      const filePath = path.join(storageDir, filename);
-      fs.writeFileSync(filePath, buffer);
+      for (let i = 0; i < imageCount; i++) {
+        const generationPrompt = input.prompt + (input.isCarousel ? ` (image ${i+1} of ${imageCount})` : "") + " instagram style, high quality, square aspect ratio";
+        const base64DataUrl = await generateImage(generationPrompt);
+        
+        // 4. Save Image to Disk
+        const base64Data = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const filename = `${crypto.randomUUID()}.png`;
+        const filePath = path.join(storageDir, filename);
+        fs.writeFileSync(filePath, buffer);
+        imagePaths.push(`/generated_images/${filename}`);
+      }
       
-      const publicPath = `/generated_images/${filename}`;
+      const publicPath = imagePaths[0]; // Legacy fallback
 
       // 5. Create DB Record
       const status = input.autoSchedule ? 'scheduled' : 'pending';
@@ -90,6 +96,8 @@ export async function registerRoutes(
         scheduledAt: scheduledAt,
         autoSchedule: input.autoSchedule,
         scheduleInterval: input.scheduleInterval,
+        isCarousel: input.isCarousel,
+        imagePaths: imagePaths,
       } as any);
 
       // 6. Increment Usage

@@ -17,6 +17,8 @@ export const images = pgTable("images", {
   publishedAt: timestamp("published_at"),
   autoSchedule: boolean("auto_schedule").default(false),
   scheduleInterval: integer("schedule_interval"), // in minutes: 15, 30, 60, 480 (8h), 1440 (24h)
+  isCarousel: boolean("is_carousel").default(false),
+  imagePaths: text("image_paths").array(), // For carousels
 });
 
 export const usageLimits = pgTable("usage_limits", {

@@ -21,23 +21,41 @@ export async function publishToInstagram(image: ImageModel): Promise<{ success: 
     // In a high-traffic production app, you'd manage session serialization.
     await loginToInstagram();
 
-    const imagePath = path.join(process.cwd(), "client/public", image.imagePath);
-    
-    if (!fs.existsSync(imagePath)) {
-      return { success: false, error: "Image file not found on server" };
+    const caption = image.caption || image.prompt;
+
+    if (image.isCarousel && image.imagePaths && image.imagePaths.length > 1) {
+      const items = image.imagePaths.map(p => ({
+        file: fs.readFileSync(path.join(process.cwd(), "client/public", p))
+      }));
+      
+      const publishResult = await ig.publish.album({
+        items,
+        caption,
+      });
+
+      return { 
+        success: true, 
+        mediaId: publishResult.id 
+      };
+    } else {
+      const imagePath = path.join(process.cwd(), "client/public", image.imagePath);
+      
+      if (!fs.existsSync(imagePath)) {
+        return { success: false, error: "Image file not found on server" };
+      }
+
+      const file = fs.readFileSync(imagePath);
+
+      const publishResult = await ig.publish.photo({
+        file: file,
+        caption,
+      });
+
+      return { 
+        success: true, 
+        mediaId: publishResult.media.id 
+      };
     }
-
-    const file = fs.readFileSync(imagePath);
-
-    const publishResult = await ig.publish.photo({
-      file: file,
-      caption: image.caption || image.prompt, // Fallback to prompt if no caption
-    });
-
-    return { 
-      success: true, 
-      mediaId: publishResult.media.id 
-    };
 
   } catch (error: any) {
     console.error("Instagram Publish Error:", error);
