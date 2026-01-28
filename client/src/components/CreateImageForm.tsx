@@ -16,7 +16,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Sparkles, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Sparkles, Loader2, Clock } from "lucide-react";
 import { useState } from "react";
 
 const formSchema = z.object({
@@ -24,9 +31,18 @@ const formSchema = z.object({
   caption: z.string().optional(),
   autoSchedule: z.boolean().default(false),
   scheduleAt: z.string().optional(),
+  scheduleInterval: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const INTERVAL_OPTIONS = [
+  { label: "15 Minutes", value: "15" },
+  { label: "30 Minutes", value: "30" },
+  { label: "1 Hour", value: "60" },
+  { label: "8 Hours", value: "480" },
+  { label: "24 Hours", value: "1440" },
+];
 
 export function CreateImageForm() {
   const generate = useGenerateImage();
@@ -39,13 +55,18 @@ export function CreateImageForm() {
       prompt: "",
       caption: "",
       autoSchedule: false,
+      scheduleInterval: "60",
     },
   });
 
   const isLimitReached = limits?.remaining === 0;
 
   function onSubmit(data: FormValues) {
-    generate.mutate(data, {
+    const payload = {
+      ...data,
+      scheduleInterval: data.scheduleInterval ? parseInt(data.scheduleInterval) : undefined,
+    };
+    generate.mutate(payload, {
       onSuccess: () => {
         form.reset();
         setIsExpanded(false);
@@ -99,34 +120,65 @@ export function CreateImageForm() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="autoSchedule"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-background/30">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Auto-Schedule</FormLabel>
-                      <FormDescription>
-                        Automatically schedule for optimal time
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="autoSchedule"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-background/30">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Auto-Publish</FormLabel>
+                        <FormDescription>
+                          Publish automatically
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-              {form.watch("autoSchedule") && (
+                {form.watch("autoSchedule") && (
+                  <FormField
+                    control={form.control}
+                    name="scheduleInterval"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col justify-center rounded-lg border p-4 bg-background/30">
+                        <FormLabel className="flex items-center gap-2 mb-2">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          Publish Every...
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-background/50 border-none">
+                              <SelectValue placeholder="Select interval" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {INTERVAL_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
+              {form.watch("autoSchedule") && !form.watch("scheduleInterval") && (
                 <FormField
                   control={form.control}
                   name="scheduleAt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Schedule Time</FormLabel>
+                      <FormLabel>Specific Schedule Time</FormLabel>
                       <FormControl>
                         <Input type="datetime-local" {...field} className="bg-background/50" />
                       </FormControl>
@@ -149,7 +201,7 @@ export function CreateImageForm() {
                 ) : isLimitReached ? (
                   "Daily Limit Reached"
                 ) : (
-                  "Generate & Create"
+                  "Generate & Schedule"
                 )}
               </Button>
             </div>
