@@ -43,6 +43,7 @@ export const api = {
         caption: z.string().optional(),
         autoSchedule: z.boolean().optional(),
         scheduleAt: z.string().optional(),
+        scheduleInterval: z.number().optional(),
       }),
       responses: {
         201: z.custom<typeof images.$inferSelect>(),

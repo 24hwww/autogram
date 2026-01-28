@@ -16,6 +16,7 @@ export const images = pgTable("images", {
   createdAt: timestamp("created_at").defaultNow(),
   publishedAt: timestamp("published_at"),
   autoSchedule: boolean("auto_schedule").default(false),
+  scheduleInterval: integer("schedule_interval"), // in minutes: 15, 30, 60, 480 (8h), 1440 (24h)
 });
 
 export const usageLimits = pgTable("usage_limits", {

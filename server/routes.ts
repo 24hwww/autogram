@@ -72,7 +72,15 @@ export async function registerRoutes(
 
       // 5. Create DB Record
       const status = input.autoSchedule ? 'scheduled' : 'pending';
-      const scheduledAt = input.scheduleAt ? new Date(input.scheduleAt) : (input.autoSchedule ? new Date() : null);
+      let scheduledAt = input.scheduleAt ? new Date(input.scheduleAt) : null;
+      
+      if (input.autoSchedule && !scheduledAt) {
+        if (input.scheduleInterval) {
+          scheduledAt = new Date(Date.now() + input.scheduleInterval * 60000);
+        } else {
+          scheduledAt = new Date();
+        }
+      }
 
       const image = await storage.createImage({
         prompt: input.prompt,
@@ -81,6 +89,7 @@ export async function registerRoutes(
         status: status,
         scheduledAt: scheduledAt,
         autoSchedule: input.autoSchedule,
+        scheduleInterval: input.scheduleInterval,
       });
 
       // 6. Increment Usage
