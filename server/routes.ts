@@ -90,7 +90,7 @@ export async function registerRoutes(
         scheduledAt: scheduledAt,
         autoSchedule: input.autoSchedule,
         scheduleInterval: input.scheduleInterval,
-      });
+      } as any);
 
       // 6. Increment Usage
       await storage.incrementUsageCount(today);
