@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sparkles, Loader2, Clock } from "lucide-react";
+import { Sparkles, Loader2, Clock, LayoutGrid } from "lucide-react";
 import { useState } from "react";
 
 const formSchema = z.object({
