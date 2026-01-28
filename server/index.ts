@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -28,6 +29,7 @@ export function log(message: string, source = "express") {
     minute: "2-digit",
     second: "2-digit",
     hour12: true,
+    timeZone: "America/Sao_Paulo",
   });
 
   console.log(`${formattedTime} [${source}] ${message}`);
@@ -60,6 +62,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const { setupAuth } = await import("./auth");
+  setupAuth(app);
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -94,10 +99,9 @@ app.use((req, res, next) => {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
-      log(`serving on port ${port}`);
+      log(`serving on http://127.0.0.1:${port}`);
     },
   );
 })();

@@ -1,38 +1,65 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text as pgText, serial as pgSerial, integer as pgInteger, boolean as pgBoolean, timestamp as pgTimestamp, jsonb as pgJsonb } from "drizzle-orm/pg-core";
+import { sqliteTable, text as sqliteText, integer as sqliteInteger } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // === TABLE DEFINITIONS ===
 
-export const images = pgTable("images", {
-  id: serial("id").primaryKey(),
-  prompt: text("prompt").notNull(),
-  caption: text("caption"),
-  imagePath: text("image_path").notNull(),
-  status: text("status", { enum: ['pending', 'scheduled', 'published', 'failed'] }).notNull().default('pending'),
-  scheduledAt: timestamp("scheduled_at"),
-  instagramMediaId: text("instagram_media_id"),
-  error: text("error"),
-  createdAt: timestamp("created_at").defaultNow(),
-  publishedAt: timestamp("published_at"),
-  autoSchedule: boolean("auto_schedule").default(false),
-  scheduleInterval: integer("schedule_interval"), // in minutes: 15, 30, 60, 480 (8h), 1440 (24h)
-  isCarousel: boolean("is_carousel").default(false),
-  imagePaths: text("image_paths").array(), // For carousels
-});
+// Determine which database we're using
+const useSqlite = !process.env.DATABASE_URL || !process.env.DATABASE_URL.startsWith('postgresql://');
 
-export const usageLimits = pgTable("usage_limits", {
-  date: text("date").primaryKey(), // YYYY-MM-DD
-  imagesGenerated: integer("images_generated").default(0).notNull(),
-});
+// Define tables for both databases
+export const images = useSqlite
+  ? sqliteTable("images", {
+    id: sqliteInteger("id").primaryKey({ autoIncrement: true }),
+    prompt: sqliteText("prompt").notNull(),
+    caption: sqliteText("caption"),
+    imagePath: sqliteText("image_path").notNull(),
+    status: sqliteText("status", { enum: ['pending', 'scheduled', 'published', 'failed'] }).notNull().default('pending'),
+    scheduledAt: sqliteInteger("scheduled_at", { mode: 'timestamp' }),
+    instagramMediaId: sqliteText("instagram_media_id"),
+    error: sqliteText("error"),
+    createdAt: sqliteInteger("created_at", { mode: 'timestamp' }).$defaultFn(() => new Date()),
+    publishedAt: sqliteInteger("published_at", { mode: 'timestamp' }),
+    autoSchedule: sqliteInteger("auto_schedule", { mode: 'boolean' }).default(false),
+    scheduleInterval: sqliteInteger("schedule_interval"),
+    isCarousel: sqliteInteger("is_carousel", { mode: 'boolean' }).default(false),
+    imagePaths: sqliteText("image_paths"), // JSON string for SQLite
+  })
+  : pgTable("images", {
+    id: pgSerial("id").primaryKey(),
+    prompt: pgText("prompt").notNull(),
+    caption: pgText("caption"),
+    imagePath: pgText("image_path").notNull(),
+    status: pgText("status", { enum: ['pending', 'scheduled', 'published', 'failed'] }).notNull().default('pending'),
+    scheduledAt: pgTimestamp("scheduled_at"),
+    instagramMediaId: pgText("instagram_media_id"),
+    error: pgText("error"),
+    createdAt: pgTimestamp("created_at").defaultNow(),
+    publishedAt: pgTimestamp("published_at"),
+    autoSchedule: pgBoolean("auto_schedule").default(false),
+    scheduleInterval: pgInteger("schedule_interval"),
+    isCarousel: pgBoolean("is_carousel").default(false),
+    imagePaths: pgText("image_paths").array(),
+  });
+
+export const usageLimits = useSqlite
+  ? sqliteTable("usage_limits", {
+    date: sqliteText("date").primaryKey(),
+    imagesGenerated: sqliteInteger("images_generated").default(0).notNull(),
+  })
+  : pgTable("usage_limits", {
+    date: pgText("date").primaryKey(),
+    imagesGenerated: pgInteger("images_generated").default(0).notNull(),
+  });
 
 // === BASE SCHEMAS ===
-export const insertImageSchema = createInsertSchema(images).omit({ 
-  id: true, 
-  createdAt: true, 
-  publishedAt: true, 
+export const insertImageSchema = createInsertSchema(images).omit({
+  id: true,
+  createdAt: true,
+  publishedAt: true,
   status: true,
-  error: true, 
+  error: true,
   instagramMediaId: true,
   imagePath: true // Generated on server
 });

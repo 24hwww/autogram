@@ -20,8 +20,14 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Set environment to production
+# Set environment to production and timezone
 ENV NODE_ENV=production
+ENV TZ=America/Sao_Paulo
+
+# Install tzdata for timezone support
+RUN apt-get update && apt-get install -y tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./

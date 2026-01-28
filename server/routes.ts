@@ -15,7 +15,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  
+
   // Ensure storage directory exists
   const storageDir = path.join(process.cwd(), "client/public/generated_images");
   if (!fs.existsSync(storageDir)) {
@@ -46,9 +46,9 @@ export async function registerRoutes(
       // 1. Check Usage Limits
       const today = getTodayDate();
       const usage = await storage.getUsageLimit(today);
-      
+
       if (usage.imagesGenerated >= DAILY_IMAGE_LIMIT) {
-        return res.status(429).json({ 
+        return res.status(429).json({
           message: "Daily image generation limit reached",
           remaining: 0
         });
@@ -60,11 +60,16 @@ export async function registerRoutes(
       // 3. Generate with Gemini
       const imageCount = input.isCarousel ? (input.imageCount || 2) : 1;
       const imagePaths: string[] = [];
-      
+      const { buildInfluencerPrompt } = await import("./prompts/influencer");
+
       for (let i = 0; i < imageCount; i++) {
-        const generationPrompt = input.prompt + (input.isCarousel ? ` (image ${i+1} of ${imageCount})` : "") + " instagram style, high quality, square aspect ratio";
+        // Build the prompt using the influencer persona
+        const generationPrompt = buildInfluencerPrompt(input.prompt) +
+          (input.isCarousel ? ` (image ${i + 1} of ${imageCount})` : "") +
+          " instagram style, high quality, square aspect ratio";
+
         const base64DataUrl = await generateImage(generationPrompt);
-        
+
         // 4. Save Image to Disk
         const base64Data = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
@@ -73,13 +78,13 @@ export async function registerRoutes(
         fs.writeFileSync(filePath, buffer);
         imagePaths.push(`/generated_images/${filename}`);
       }
-      
+
       const publicPath = imagePaths[0]; // Legacy fallback
 
       // 5. Create DB Record
       const status = input.autoSchedule ? 'scheduled' : 'pending';
       let scheduledAt = input.scheduleAt ? new Date(input.scheduleAt) : null;
-      
+
       if (input.autoSchedule && !scheduledAt) {
         if (input.scheduleInterval) {
           scheduledAt = new Date(Date.now() + input.scheduleInterval * 60000);
@@ -126,14 +131,14 @@ export async function registerRoutes(
 
       // Attempt publish
       const result = await publishToInstagram(image);
-      
+
       const updated = await storage.updateImage(id, {
         status: result.success ? 'published' : 'failed',
         publishedAt: result.success ? new Date() : undefined,
         instagramMediaId: result.mediaId,
         error: result.error
       });
-      
+
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
@@ -148,7 +153,7 @@ export async function registerRoutes(
   app.post(api.images.schedule.path, async (req, res) => {
     const id = Number(req.params.id);
     const { scheduledAt } = api.images.schedule.input.parse(req.body);
-    
+
     const image = await storage.getImage(id);
     if (!image) return res.status(404).json({ message: "Image not found" });
 
@@ -164,12 +169,20 @@ export async function registerRoutes(
   app.get(api.limits.get.path, async (req, res) => {
     const today = getTodayDate();
     const usage = await storage.getUsageLimit(today);
-    
+
+    // We don't want to test connection on every limit check to avoid rate limits
+    // but for now let's do it as it's a direct user request.
+    const { testInstagramConnection } = await import("./instagram");
+    const connection = await testInstagramConnection();
+
     res.json({
       date: today,
       count: usage.imagesGenerated,
       limit: DAILY_IMAGE_LIMIT,
-      remaining: Math.max(0, DAILY_IMAGE_LIMIT - usage.imagesGenerated)
+      remaining: Math.max(0, DAILY_IMAGE_LIMIT - usage.imagesGenerated),
+      instagramUsername: process.env.INSTAGRAM_USERNAME,
+      instagramConnected: connection.connected,
+      instagramError: connection.error
     });
   });
 
@@ -178,7 +191,7 @@ export async function registerRoutes(
     const id = Number(req.params.id);
     const image = await storage.getImage(id);
     if (!image) return res.status(404).json({ message: "Image not found" });
-    
+
     // Optional: Delete file from disk
     // const filePath = path.join(process.cwd(), "client/public", image.imagePath);
     // if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -187,7 +200,14 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  // Start the background scheduler
+  // Start background tasks
+  try {
+    const { startInstagramConnection } = await import("./instagram");
+    startInstagramConnection();
+  } catch (error) {
+    console.error("Failed to start Instagram connection loop:", error);
+  }
+
   startScheduler();
 
   return httpServer;
