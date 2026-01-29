@@ -149,6 +149,12 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/instagram/status", async (_req, res) => {
+    const { testInstagramConnection } = await import("./instagram");
+    const status = await testInstagramConnection();
+    res.json(status);
+  });
+
   // Schedule
   app.post(api.images.schedule.path, async (req, res) => {
     const id = Number(req.params.id);

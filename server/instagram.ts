@@ -17,13 +17,17 @@ async function loginToInstagram() {
 
 export async function publishToInstagram(image: ImageModel): Promise<{ success: boolean; mediaId?: string; error?: string }> {
   try {
-    // Non-blocking login attempt: only wait if we absolutely must publish now
+    // Ensure connection state is updated
     if (!isConnected) {
       console.log("Instagram: Not connected yet. Attempting one-time login for publish...");
       try {
         await loginToInstagram();
-      } catch (e) {
-        return { success: false, error: "Instagram connection failed. Please check credentials and try again later." };
+        isConnected = true;
+        connectionError = null;
+      } catch (e: any) {
+        isConnected = false;
+        connectionError = e.message;
+        return { success: false, error: `Instagram connection failed: ${e.message}. Please check credentials.` };
       }
     }
 
