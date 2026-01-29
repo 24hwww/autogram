@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./data/autogram.db"
+}
+
+model Image {
+  id                Int      @id @default(autoincrement())
+  prompt            String
+  caption           String?
+  imagePath         String   @map("image_path")
+  status            ImageStatus @default(PENDING)
+  scheduledAt       DateTime? @map("scheduled_at")
+  instagramMediaId   String?  @map("instagram_media_id")
+  error             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  publishedAt       DateTime? @map("published_at")
+  autoSchedule      Boolean  @default(false) @map("auto_schedule")
+  scheduleInterval  Int?     @map("schedule_interval")
+  isCarousel        Boolean  @default(false) @map("is_carousel")
+  imagePaths        String?  @map("image_paths") // JSON string
+
+  @@map("images")
+}
+
+model UsageLimit {
+  id               Int      @id @default(autoincrement())
+  date             String   @unique
+  imagesGenerated  Int      @default(0) @map("images_generated")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("usage_limits")
+}
+
+model Chat {
+  id        Int      @id @default(autoincrement())
+  sessionId String   @map("session_id")
+  role      String
+  content   String
+  timestamp DateTime @default(now())
+
+  @@map("chats")
+}
+
+enum ImageStatus {
+  PENDING
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}

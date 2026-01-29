@@ -17,20 +17,27 @@ let db: any;
 let pool: any = null;
 
 // Try to use PostgreSQL first, fallback to SQLite
-if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgresql://')) {
-  try {
-    pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    db = drizzlePg(pool, { schema: { ...schema, ...chatSchema } });
-    console.log('✅ Using PostgreSQL database');
-  } catch (error) {
-    console.warn('⚠️  PostgreSQL connection failed, falling back to SQLite:', error);
-    pool = null;
-    db = null;
+async function initializeDatabase() {
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgresql://')) {
+    try {
+      pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      
+      // Test PostgreSQL connection
+      const client = await pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      
+      db = drizzlePg(pool, { schema: { ...schema, ...chatSchema } });
+      console.log('✅ Using PostgreSQL database');
+      return;
+    } catch (error) {
+      console.warn('⚠️ PostgreSQL connection failed, falling back to SQLite:', error instanceof Error ? error.message : error);
+      pool = null;
+      db = null;
+    }
   }
-}
 
-// Fallback to SQLite
-if (!db) {
+  // Fallback to SQLite
   const dataDir = join(__dirname, '../data');
   if (!existsSync(dataDir)) {
     mkdirSync(dataDir, { recursive: true });
@@ -41,5 +48,10 @@ if (!db) {
   db = drizzleSqlite(sqlite, { schema: { ...schema, ...chatSchema } });
   console.log('✅ Using SQLite database (local file)');
 }
+
+// Initialize database immediately
+(async () => {
+  await initializeDatabase();
+})();
 
 export { db, pool };

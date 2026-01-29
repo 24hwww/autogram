@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Publicaciones Instagram</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <h2 class="sidebar-title">SIDEBAR</h2>
+                <nav class="sidebar-nav">
+                    <ul class="nav-list">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">📊 Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">📝 Publicaciones</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">⚙️ Configuraciones</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">🔍 Filtros</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">📈 Estadísticas</a>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="sidebar-actions">
+                    <button class="action-btn primary">➕ Nueva Publicación</button>
+                    <button class="action-btn secondary">🔄 Sincronizar</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1 class="page-title">Panel de Publicaciones</h1>
+                <div class="header-actions">
+                    <select class="filter-select">
+                        <option value="all">Todas las publicaciones</option>
+                        <option value="pending">Por publicar</option>
+                        <option value="published">Publicadas</option>
+                    </select>
+                    <button class="refresh-btn">🔄</button>
+                </div>
+            </header>
+
+            <!-- Cards Grid -->
+            <section class="cards-grid" id="cardsContainer">
+                <!-- Cards will be dynamically generated here -->
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

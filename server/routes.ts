@@ -200,15 +200,19 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  // Start background tasks
-  try {
-    const { startInstagramConnection } = await import("./instagram");
-    startInstagramConnection();
-  } catch (error) {
-    console.error("Failed to start Instagram connection loop:", error);
-  }
-
+  // Start background tasks (except Instagram)
   startScheduler();
+
+  // Start Instagram connection last after everything else is ready
+  setTimeout(async () => {
+    try {
+      console.log("🔄 Starting Instagram connection after server initialization...");
+      const { startInstagramConnection } = await import("./instagram");
+      startInstagramConnection();
+    } catch (error) {
+      console.error("Failed to start Instagram connection loop:", error);
+    }
+  }, 3000); // 3 second delay
 
   return httpServer;
 }

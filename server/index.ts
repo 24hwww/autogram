@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { storage } from "./storage-prisma";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
@@ -86,8 +87,9 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
+    // Skip Vite due to crypto.hash compatibility issue
+    // Use static serving instead
+    serveStatic(app);
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

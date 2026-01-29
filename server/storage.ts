@@ -51,9 +51,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getScheduledImagesToPublish(): Promise<ImageModel[]> {
-    // Find images with status 'scheduled' and scheduledAt <= now
-    return await db.select().from(images)
-      .where(sql`${images.status} = 'scheduled' AND ${images.scheduledAt} <= NOW()`);
+    try {
+      // Find images with status 'scheduled' and scheduledAt <= now
+      // Use compatible SQL for both PostgreSQL and SQLite
+      const now = new Date().toISOString();
+      return await db.select().from(images)
+        .where(sql`${images.status} = 'scheduled' AND ${images.scheduledAt} <= ${now}`);
+    } catch (error) {
+      console.warn("⚠️ Database query failed in getScheduledImagesToPublish:", error);
+      return [];
+    }
   }
 
   async getUsageLimit(date: string): Promise<UsageLimit> {
