@@ -17,9 +17,15 @@ async function loginToInstagram() {
 
 export async function publishToInstagram(image: ImageModel): Promise<{ success: boolean; mediaId?: string; error?: string }> {
   try {
-    // Ensure logged in (simple approach: re-login or check session - for simplicity/robustness in this context, we'll login)
-    // In a high-traffic production app, you'd manage session serialization.
-    await loginToInstagram();
+    // Non-blocking login attempt: only wait if we absolutely must publish now
+    if (!isConnected) {
+      console.log("Instagram: Not connected yet. Attempting one-time login for publish...");
+      try {
+        await loginToInstagram();
+      } catch (e) {
+        return { success: false, error: "Instagram connection failed. Please check credentials and try again later." };
+      }
+    }
 
     const caption = image.caption || image.prompt;
 
