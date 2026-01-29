@@ -177,7 +177,7 @@ export class RetryQueue {
         });
 
         await storage.updateImage(imageId, {
-            status: 'failed',
+            status: 'FAILED',
             error: errorReason
         });
     }
@@ -186,17 +186,17 @@ export class RetryQueue {
         const image = await storage.getImage(imageId);
         if (!image) throw new Error("Image not found in DB");
 
-        if (image.status === 'published') return;
+        if (image.status === 'PUBLISHED') return;
 
         console.log(`🔄 RetryQueue: Retrying publication for Image ${imageId}...`);
         const result = await InstagramService.publish(image);
 
         if (result.success) {
             await storage.updateImage(imageId, {
-                status: 'published',
+                status: 'PUBLISHED',
                 publishedAt: new Date(),
                 instagramMediaId: result.mediaId,
-                error: null
+                error: undefined
             });
         } else {
             throw new Error(result.error || "Publication failed");

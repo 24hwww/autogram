@@ -46,3 +46,9 @@ export const getThemeByTimeOfDay = (hour: number, dayOfWeek: number): Theme => {
 
     return themes.lifestyle;
 };
+
+export const getRandomTheme = (): Theme => {
+    const themeKeys = Object.keys(themes);
+    const randomKey = themeKeys[Math.floor(Math.random() * themeKeys.length)];
+    return themes[randomKey];
+};

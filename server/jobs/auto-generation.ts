@@ -1,4 +1,5 @@
 import { Orchestrator } from "../automation/orchestrator";
+import { storage } from "../storage";
 
 interface JobData {
   id: number;

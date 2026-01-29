@@ -1,10 +1,16 @@
 import { PrismaClient } from '@prisma/client';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+let baseDir: string;
+
+// Handle both development (ES modules) and production (CJS)
+if (typeof __dirname !== 'undefined') {
+  baseDir = __dirname;
+} else {
+  // In production CJS environment, use process.cwd()
+  baseDir = process.cwd();
+}
 
 // Global Prisma client instance
 declare global {
@@ -14,7 +20,7 @@ declare global {
 // Create Prisma client with SQLite
 const createPrismaClient = () => {
   // Ensure data directory exists
-  const dataDir = join(__dirname, '../data');
+  const dataDir = join(baseDir, 'data');
   if (!existsSync(dataDir)) {
     mkdirSync(dataDir, { recursive: true });
   }

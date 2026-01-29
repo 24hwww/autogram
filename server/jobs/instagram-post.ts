@@ -24,7 +24,7 @@ export default async function (job: { data: JobData }) {
       throw new Error(`Image ${imageId} not found`);
     }
     
-    if (image.status === 'published') {
+    if (image.status === 'PUBLISHED') {
       console.log(`ℹ️ Bree Job: Image ${imageId} already published, skipping`);
       return;
     }
@@ -33,10 +33,10 @@ export default async function (job: { data: JobData }) {
     
     if (result.success) {
       await storage.updateImage(imageId, {
-        status: 'published',
+        status: 'PUBLISHED',
         publishedAt: new Date(),
         instagramMediaId: result.mediaId,
-        error: null
+        error: undefined
       });
       
       console.log(`✅ Bree Job: Successfully published image ${imageId}`);
@@ -49,7 +49,7 @@ export default async function (job: { data: JobData }) {
     
     // Update image status to failed
     await storage.updateImage(imageId, {
-      status: 'failed',
+      status: 'FAILED',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
     

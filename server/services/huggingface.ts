@@ -10,13 +10,17 @@ export class HuggingFaceService {
         // Trying a more robust model
         const model = "stabilityai/stable-diffusion-xl-base-1.0";
 
+        // Enhance prompt with quality boosters
+        const qualityBoosters = "premium quality, high resolution, 8k, detailed skin texture, cinematic lighting, professional photography, masterpiece, sharp focus";
+        const enhancedPrompt = `${prompt}, ${qualityBoosters}`;
+
         try {
             const response = await hf.textToImage({
                 model: model,
-                inputs: prompt
+                inputs: enhancedPrompt
             });
 
-            const arrayBuffer = await response.arrayBuffer();
+            const arrayBuffer = await (response as any).arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
 
             console.log("✅ HuggingFaceService: Image generated successfully!");

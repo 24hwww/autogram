@@ -7,6 +7,7 @@ import { storage } from "../storage";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { broadcast } from "../ws";
 
 export class Orchestrator {
 
@@ -25,13 +26,18 @@ export class Orchestrator {
             // 2. Generate Image (Photo or Text-based)
             let buffer: Buffer;
 
-            if (concept.type === 'verse') {
-                const { ImageGeneratorService } = await import("../services/imageGenerator");
-                // Use the prompt as the verse text (concept.prompt holds the text in verse mode)
-                buffer = await ImageGeneratorService.generateTextImage(concept.prompt, concept.author);
-            } else {
-                // New: Hugging Face (Stable Diffusion)
-                buffer = await HuggingFaceService.generateImage(concept.prompt);
+            try {
+                if (concept.type === 'verse') {
+                    const { ImageGeneratorService } = await import("../services/imageGenerator");
+                    // Use the prompt as the verse text (concept.prompt holds the text in verse mode)
+                    buffer = await ImageGeneratorService.generateTextImage(concept.prompt, concept.author);
+                } else {
+                    // New: Hugging Face (Stable Diffusion)
+                    buffer = await HuggingFaceService.generateImage(concept.prompt);
+                }
+            } catch (genError) {
+                console.error("❌ Image generation service failed:", genError);
+                throw genError;
             }
 
             // Save to disk
@@ -46,38 +52,40 @@ export class Orchestrator {
 
             const publicPath = `/generated_images/${filename}`;
 
-            // 3. Check Instagram connection status
-            const instagramConnected = await this.checkInstagramConnection();
-            
-            // 4. Save to DB with appropriate status
+            // 3. Save to DB first as PENDING
             const newImage = await storage.createImage({
                 prompt: concept.prompt,
                 caption: concept.caption,
                 imagePath: publicPath,
-                status: instagramConnected ? 'scheduled' : 'pending',
-                scheduledAt: instagramConnected ? new Date() : null,
+                status: 'PENDING',
+                scheduledAt: null,
                 autoSchedule: true,
-                imagePaths: [publicPath],
+                imagePaths: JSON.stringify([publicPath]),
                 isCarousel: false
             } as any);
 
             imageId = newImage.id;
-            console.log(`💾 Image saved to DB (ID: ${imageId}) - Status: ${instagramConnected ? 'scheduled' : 'pending'}`);
+            console.log(`💾 Image generated and saved to DB (ID: ${imageId}) - Status: PENDING`);
 
-            // 5. Only attempt to publish if Instagram is connected
-            if (instagramConnected) {
+            // Broadcast to all clients
+            broadcast({ type: "IMAGE_GENERATED", payload: newImage });
+
+            // 4. Try to check Instagram connection and publish
+            const instagramStatus = await InstagramService.getConnectionStatus();
+
+            if (instagramStatus.connected && instagramStatus.sessionValid) {
+                console.log(`📡 Instagram is connected. Attempting immediate publication for image ${imageId}...`);
                 await this.publishWithRetry(imageId);
             } else {
-                console.log(`⏳ Instagram not connected. Image ${imageId} left as pending for future publication.`);
-                // Schedule for retry when Instagram becomes available
-                await this.schedulePendingForRetry(imageId);
+                console.log(`⏳ Instagram not connected (Status: ${JSON.stringify(instagramStatus)}). Image ${imageId} remains PENDING.`);
+                // We don't fail here, the image is already saved and ready for whenever Instagram is connected
             }
 
         } catch (error) {
             console.error("❌ Orchestrator Critical Failure:", error);
             if (imageId) {
                 await storage.updateImage(imageId, {
-                    status: 'failed',
+                    status: 'FAILED',
                     error: `Generation failed: ${(error as any).message}`
                 });
             }
@@ -117,10 +125,10 @@ export class Orchestrator {
     static async processPendingImages() {
         try {
             console.log("🔄 Processing pending images...");
-            
+
             // Get all pending images
-            const pendingImages = await storage.getAllImages().then(images => 
-                images.filter(img => img.status === 'pending')
+            const pendingImages = await storage.getAllImages().then(images =>
+                images.filter(img => img.status === 'PENDING')
             );
 
             if (pendingImages.length === 0) {
@@ -133,20 +141,20 @@ export class Orchestrator {
             for (const image of pendingImages) {
                 try {
                     console.log(`⏳ Processing pending image ${image.id}...`);
-                    
+
                     // Update status to scheduled
                     await storage.updateImage(image.id, {
-                        status: 'scheduled',
+                        status: 'SCHEDULED',
                         scheduledAt: new Date()
                     });
 
                     // Attempt to publish
                     await this.publishWithRetry(image.id);
-                    
+
                 } catch (error) {
                     console.error(`❌ Failed to process pending image ${image.id}:`, error);
                     await storage.updateImage(image.id, {
-                        status: 'pending',
+                        status: 'PENDING',
                         error: error instanceof Error ? error.message : 'Unknown error'
                     });
                 }
@@ -171,7 +179,7 @@ export class Orchestrator {
         if (result.success) {
             console.log(`✅ Orchestrator: Published successfully (Media ID: ${result.mediaId})`);
             await storage.updateImage(imageId, {
-                status: 'published',
+                status: 'PUBLISHED',
                 publishedAt: new Date(),
                 instagramMediaId: result.mediaId
             });

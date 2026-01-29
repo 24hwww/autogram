@@ -1,4 +1,4 @@
-import { type ImageModel } from "@shared/schema";
+import { type ImageModel } from "@shared/types";
 import { usePublishImage, useDeleteImage, useScheduleImage } from "@/hooks/use-images";
 import { StatusBadge } from "./StatusBadge";
 import { Card } from "@/components/ui/card";
@@ -60,7 +60,7 @@ export function ImageCard({ image }: ImageCardProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
           <div className="w-full">
             <div className="flex gap-2">
-              {image.status !== 'published' && (
+              {image.status !== 'PUBLISHED' && (
                 <Button 
                   onClick={() => publish.mutate(image.id)}
                   disabled={publish.isPending}

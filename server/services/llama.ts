@@ -1,4 +1,4 @@
-import { type InfluencerProfile } from "@shared/schema";
+import { type InfluencerProfile } from "@shared/types";
 
 const WORKER_URL = process.env.LLAMA_API_URL || "https://llama-3-8b-instruct.24hwww.workers.dev/";
 

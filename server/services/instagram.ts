@@ -1,18 +1,36 @@
 import { IgApiClient } from 'instagram-private-api';
-import { type ImageModel } from '@shared/schema';
+import { type ImageModel } from '@shared/types';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { CookieJar } from 'tough-cookie';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const baseDir = typeof __dirname !== 'undefined'
+    ? __dirname
+    : path.dirname(fileURLToPath(import.meta.url));
 
 // Session storage path
-const SESSION_PATH = path.join(__dirname, '../../data/instagram-session.json');
+const SESSION_PATH = path.join(baseDir, '../../data/instagram-session.json');
 
 // Singleton instance - UNA SOLA INSTANCIA POR CUENTA
 const ig = new IgApiClient();
+
+type CookieInput = {
+    name: string;
+    value: string;
+    domain: string;
+    path?: string;
+    secure?: boolean;
+    httpOnly?: boolean;
+    expires?: number;
+};
+
+function normalizeCookieInput(raw: unknown): CookieInput[] {
+    if (!raw) return [];
+    const list = Array.isArray(raw) ? raw : (raw as { cookies?: CookieInput[] }).cookies;
+    if (!Array.isArray(list)) return [];
+    return list.filter((item) => item?.name && item?.value && item?.domain);
+}
 
 export class InstagramService {
     private static isConnected = false;
@@ -45,12 +63,21 @@ export class InstagramService {
                 this.sessionInitialized = true;
                 console.log('✅ Instagram: Session loaded successfully');
                 return true;
-            } else {
-                console.log('📝 Instagram: No existing session found');
-                this.sessionValid = false;
-                this.sessionInitialized = true;
-                return false;
             }
+
+            console.log('📝 Instagram: No existing session found');
+
+            if (process.env.INSTAGRAM_USERNAME && process.env.INSTAGRAM_PASSWORD) {
+                console.log('🔑 Instagram: Attempting automatic login...');
+                await this.proLogin(process.env.INSTAGRAM_USERNAME, process.env.INSTAGRAM_PASSWORD);
+                this.sessionInitialized = true;
+                this.sessionValid = true;
+                return true;
+            }
+
+            this.sessionValid = false;
+            this.sessionInitialized = true;
+            return false;
 
         } catch (error) {
             console.warn('⚠️ Instagram: Failed to load session, will need fresh login:', error);
@@ -81,24 +108,87 @@ export class InstagramService {
     }
 
     /**
-     * PRO Login - UNA SOLA VEZ
+     * Perform login with provided credentials (dashboard form)
      */
-    private static async proLogin(): Promise<boolean> {
-        if (!process.env.INSTAGRAM_USERNAME || !process.env.INSTAGRAM_PASSWORD) {
-            throw new Error("Instagram credentials not found in environment variables");
+    static async loginWithCredentials(username: string, password: string): Promise<boolean> {
+        if (!username || !password) {
+            throw new Error("Instagram username/password required");
         }
 
+        process.env.INSTAGRAM_USERNAME = username;
+        process.env.INSTAGRAM_PASSWORD = password;
+
+        // Clear existing session
+        if (fs.existsSync(SESSION_PATH)) {
+            fs.unlinkSync(SESSION_PATH);
+            console.log('🗑️ Instagram: Old session deleted');
+        }
+
+        // Reset state
+        ig.state.generateDevice(username);
+        this.isConnected = false;
+        this.connectionError = null;
+        this.sessionInitialized = false;
+        this.sessionValid = false;
+
+        return await this.proLogin(username, password);
+    }
+
+    /**
+     * Perform login with cookies exported from browser
+     */
+    static async loginWithCookies(username: string, cookies: unknown): Promise<boolean> {
+        if (!username) {
+            throw new Error("Instagram username required");
+        }
+
+        const cookieList = normalizeCookieInput(cookies);
+        if (!cookieList.length) {
+            throw new Error("Invalid cookie data");
+        }
+
+        process.env.INSTAGRAM_USERNAME = username;
+
+        ig.state.generateDevice(username);
+
+        const jar = new CookieJar();
+        for (const cookie of cookieList) {
+            const protocol = cookie.secure ? "https" : "http";
+            const domain = cookie.domain.startsWith(".") ? cookie.domain.slice(1) : cookie.domain;
+            const cookieUrl = `${protocol}://${domain}${cookie.path || "/"}`;
+            const cookieString = `${cookie.name}=${cookie.value}`;
+            await jar.setCookie(cookieString, cookieUrl);
+        }
+
+        (ig.state as unknown as { cookieJar: CookieJar }).cookieJar = jar;
+
+        const user = await ig.account.currentUser();
+        console.log('✅ Instagram: Cookie login successful!', user?.username);
+
+        await this.saveSession();
+        this.isConnected = true;
+        this.connectionError = null;
+        this.sessionInitialized = true;
+        this.sessionValid = true;
+
+        return true;
+    }
+
+    /**
+     * PRO Login - UNA SOLA VEZ
+     */
+    private static async proLogin(username: string, password: string): Promise<boolean> {
         console.log('🔑 Instagram: PRO Login - UNA SOLA VEZ...');
         
         // Generate device
-        ig.state.generateDevice(process.env.INSTAGRAM_USERNAME);
+        ig.state.generateDevice(username);
         
         // Human-like delay
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         try {
             // Login único - NUNCA REINTENTAR
-            await ig.account.login(process.env.INSTAGRAM_USERNAME, process.env.INSTAGRAM_PASSWORD);
+            await ig.account.login(username, password);
             
             console.log('✅ Instagram: Login successful!');
             
@@ -189,7 +279,7 @@ export class InstagramService {
                 
                 const carouselItems = [];
                 for (const itemPath of paths) {
-                    const fullPath = path.join(process.cwd(), 'client', itemPath);
+                    const fullPath = path.join(process.cwd(), 'client', 'public', itemPath);
                     if (fs.existsSync(fullPath)) {
                         carouselItems.push(fs.readFileSync(fullPath));
                     }
@@ -209,7 +299,7 @@ export class InstagramService {
             }
 
             // Read image file
-            const imagePath = path.join(process.cwd(), 'client', image.imagePath);
+            const imagePath = path.join(process.cwd(), 'client', 'public', image.imagePath);
             if (!fs.existsSync(imagePath)) {
                 throw new Error(`Image file not found: ${imagePath}`);
             }
@@ -263,6 +353,10 @@ export class InstagramService {
      */
     static async performFreshLogin(): Promise<boolean> {
         try {
+            if (!process.env.INSTAGRAM_USERNAME || !process.env.INSTAGRAM_PASSWORD) {
+                throw new Error("Instagram credentials not found in environment variables");
+            }
+
             // Clear existing session
             if (fs.existsSync(SESSION_PATH)) {
                 fs.unlinkSync(SESSION_PATH);
@@ -277,7 +371,7 @@ export class InstagramService {
             this.sessionValid = false;
 
             // Perform PRO login
-            return await this.proLogin();
+            return await this.proLogin(process.env.INSTAGRAM_USERNAME, process.env.INSTAGRAM_PASSWORD);
             
         } catch (error) {
             console.error('❌ Instagram: Fresh login failed:', error);

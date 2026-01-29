@@ -12,6 +12,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Generate Prisma client
+RUN npx prisma generate
+
 # Build the application
 RUN npm run build
 
@@ -24,10 +27,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV TZ=America/Sao_Paulo
 
-# Install tzdata for timezone support
-RUN apt-get update && apt-get install -y tzdata && \
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
-    rm -rf /var/lib/apt/lists/*
+# Install system dependencies including OpenSSL for Prisma
+RUN apt-get update && apt-get install -y \
+    tzdata \
+    openssl \
+    && ln -snf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
+    && echo America/Sao_Paulo > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
@@ -36,9 +42,11 @@ COPY package*.json ./
 # Alternatively, you could move drizzle-kit to specific dependencies
 RUN npm install
 
-# Copy source code for drizzle-kit
-COPY shared ./shared
-COPY drizzle.config.ts ./
+# Copy source code for prisma
+COPY prisma ./prisma
+
+# Regenerate Prisma client in production
+RUN npx prisma generate
 
 # Copy the build artifacts from the builder stage
 COPY --from=builder /app/dist ./dist

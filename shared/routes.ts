@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { images, insertImageSchema } from './schema';
+import type { ImageModel } from './types';
 
 export const errorSchemas = {
   validation: z.object({
@@ -10,6 +10,9 @@ export const errorSchemas = {
     message: z.string(),
   }),
   internal: z.object({
+    message: z.string(),
+  }),
+  server: z.object({
     message: z.string(),
   }),
   rateLimit: z.object({
@@ -24,14 +27,14 @@ export const api = {
       method: 'GET' as const,
       path: '/api/images',
       responses: {
-        200: z.array(z.custom<typeof images.$inferSelect>()),
+        200: z.array(z.custom<ImageModel>()),
       },
     },
     get: {
       method: 'GET' as const,
       path: '/api/images/:id',
       responses: {
-        200: z.custom<typeof images.$inferSelect>(),
+        200: z.custom<ImageModel>(),
         404: errorSchemas.notFound,
       },
     },
@@ -48,7 +51,7 @@ export const api = {
         imageCount: z.number().min(1).max(10).optional(),
       }),
       responses: {
-        201: z.custom<typeof images.$inferSelect>(),
+        201: z.custom<ImageModel>(),
         400: errorSchemas.validation,
         429: errorSchemas.rateLimit,
       },
@@ -57,7 +60,7 @@ export const api = {
       method: 'POST' as const,
       path: '/api/images/:id/publish',
       responses: {
-        200: z.custom<typeof images.$inferSelect>(),
+        200: z.custom<ImageModel>(),
         404: errorSchemas.notFound,
         500: errorSchemas.internal,
       },
@@ -69,7 +72,7 @@ export const api = {
         scheduledAt: z.string().datetime(),
       }),
       responses: {
-        200: z.custom<typeof images.$inferSelect>(),
+        200: z.custom<ImageModel>(),
         404: errorSchemas.notFound,
       },
     },
@@ -79,6 +82,77 @@ export const api = {
       responses: {
         204: z.void(),
         404: errorSchemas.notFound,
+      },
+    },
+  },
+  generate: {
+    prompt: {
+      method: 'POST' as const,
+      path: '/api/generate/prompt',
+      input: z.object({
+        theme: z.string().optional(),
+        timeOfDay: z.string().optional(),
+        contentType: z.enum(['image', 'verse']).optional(),
+      }),
+      responses: {
+        200: z.object({
+          prompt: z.string(),
+          caption: z.string(),
+          type: z.enum(['image', 'verse']),
+          author: z.string().optional(),
+        }),
+        500: errorSchemas.server,
+      },
+    },
+    full: {
+      method: 'POST' as const,
+      path: '/api/generate/full',
+      input: z.object({
+        theme: z.string().optional(),
+        timeOfDay: z.string().optional(),
+        contentType: z.enum(['image', 'verse']).optional(),
+        autoPublish: z.boolean().optional(),
+      }),
+      responses: {
+        201: z.custom<ImageModel>(),
+        500: errorSchemas.server,
+      },
+    },
+  },
+  scheduler: {
+    status: {
+      method: 'GET' as const,
+      path: '/api/scheduler/status',
+      responses: {
+        200: z.object({
+          running: z.boolean(),
+          interval: z.number(),
+          nextRun: z.string().optional(),
+          scheduledCount: z.number(),
+        }),
+      },
+    },
+    updateInterval: {
+      method: 'POST' as const,
+      path: '/api/scheduler/interval',
+      input: z.object({
+        interval: z.number().min(60000), // minimum 1 minute
+      }),
+      responses: {
+        200: z.object({
+          success: z.boolean(),
+          interval: z.number(),
+        }),
+      },
+    },
+    trigger: {
+      method: 'POST' as const,
+      path: '/api/scheduler/trigger',
+      responses: {
+        200: z.object({
+          success: z.boolean(),
+          message: z.string(),
+        }),
       },
     },
   },
@@ -96,6 +170,32 @@ export const api = {
           instagramConnected: z.boolean().optional(),
           instagramError: z.string().optional(),
         }),
+      },
+    },
+  },
+  instagram: {
+    login: {
+      method: 'POST' as const,
+      path: '/api/instagram/login',
+      input: z.object({
+        username: z.string().min(1),
+        password: z.string().min(1),
+      }),
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        400: errorSchemas.validation,
+      },
+    },
+    cookies: {
+      method: 'POST' as const,
+      path: '/api/instagram/cookies',
+      input: z.object({
+        username: z.string().min(1),
+        cookies: z.unknown(),
+      }),
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        400: errorSchemas.validation,
       },
     },
   },

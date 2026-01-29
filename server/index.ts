@@ -1,12 +1,15 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { storage } from "./storage-prisma";
+import { storage } from "./storage";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { setupWs } from "./ws";
 
 const app = express();
 const httpServer = createServer(app);
+
+setupWs(httpServer);
 
 declare module "http" {
   interface IncomingMessage {
@@ -63,10 +66,44 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const { setupAuth } = await import("./auth");
-  setupAuth(app);
+  // const { setupAuth } = await import("./auth");
+  // setupAuth(app); // Comentado - no requerimos autenticación
 
   await registerRoutes(httpServer, app);
+
+  // Initialize automation system
+  setTimeout(async () => {
+    try {
+      console.log("🔄 Initializing automation system...");
+
+      // Initialize retry queue
+      const { RetryQueue } = await import("./automation/retryQueue");
+      await RetryQueue.init();
+
+      // Start auto-generation if enabled
+      if (process.env.AUTO_GENERATION_ENABLED === 'true') {
+        const interval = parseInt(process.env.AUTO_GENERATION_INTERVAL_MINUTES || '15', 10);
+        console.log(`🚀 Auto-generation enabled with ${interval} minute interval`);
+
+        // Run once immediately on startup
+        const { Orchestrator } = await import("./automation/orchestrator");
+        setTimeout(() => Orchestrator.generateAndPost(), 1000);
+
+        setInterval(async () => {
+          try {
+            await Orchestrator.generateAndPost();
+          } catch (error) {
+            console.error("❌ Auto-generation failed:", error);
+          }
+        }, interval * 60 * 1000);
+      } else {
+        console.log("ℹ️ Auto-generation disabled (AUTO_GENERATION_ENABLED not set to 'true')");
+      }
+
+    } catch (error) {
+      console.error("Failed to initialize automation system:", error);
+    }
+  }, 3000); // 3 second delay
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -87,9 +124,9 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    // Skip Vite due to crypto.hash compatibility issue
-    // Use static serving instead
-    serveStatic(app);
+    // Use Vite for development with HMR
+    const { setupVite } = await import("./vite");
+    await setupVite(httpServer, app);
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
