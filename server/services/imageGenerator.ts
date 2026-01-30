@@ -4,6 +4,39 @@ import { ProfileService } from "./profile";
 
 export class ImageGeneratorService {
     /**
+     * Orchestrates image generation with fallbacks: Gemini -> HuggingFace -> Sharp
+     */
+    static async generateImageWithFallback(prompt: string, text: string = "", author: string = ""): Promise<{ buffer: Buffer; source: string }> {
+        // Fallback 1: Gemini (Replit AI)
+        try {
+            console.log('✨ ImageGenerator: Attempting Gemini...');
+            const { generateImage } = await import("../replit_integrations/image/client");
+            const base64DataUrl = await generateImage(prompt + " high quality, professional photography, instagram style");
+            const base64Data = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
+            return { buffer: Buffer.from(base64Data, 'base64'), source: 'gemini' };
+        } catch (error) {
+            console.warn('⚠️ ImageGenerator: Gemini failed, falling back to HuggingFace...', error);
+        }
+
+        // Fallback 2: HuggingFace (if token exists)
+        try {
+            if (process.env.HUGGINGFACE_TOKEN) {
+                console.log('✨ ImageGenerator: Attempting HuggingFace...');
+                const { HuggingFaceService } = await import("./huggingface");
+                const buffer = await HuggingFaceService.generateImage(prompt);
+                return { buffer, source: 'huggingface' };
+            }
+        } catch (error) {
+            console.warn('⚠️ ImageGenerator: HuggingFace failed, falling back to Sharp...', error);
+        }
+
+        // Fallback 3: Sharp (Always works, no API needed)
+        console.log('✨ ImageGenerator: Using Sharp (local fallback)...');
+        const buffer = await this.generateTextImage(text || prompt, author);
+        return { buffer, source: 'sharp' };
+    }
+
+    /**
      * Generates a 1080x1080 image with centered text suitable for Instagram.
      * Uses Sharp for high-performance, free image generation on Replit.
      * @param text The text (verse/quote) to render

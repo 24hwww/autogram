@@ -90,11 +90,10 @@ export async function registerRoutes(
           (input.isCarousel ? ` (image ${i + 1} of ${imageCount})` : "") +
           " instagram style, high quality, square aspect ratio";
 
-        const base64DataUrl = await generateImage(generationPrompt);
+        const { ImageGeneratorService } = await import("./services/imageGenerator");
+        const { buffer } = await ImageGeneratorService.generateImageWithFallback(generationPrompt, input.prompt, input.caption || "");
 
         // 4. Save Image to Disk
-        const base64Data = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
         const filename = `${crypto.randomUUID()}.png`;
         const filePath = path.join(storageDir, filename);
         fs.writeFileSync(filePath, buffer);

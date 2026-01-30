@@ -1,6 +1,6 @@
 import { HfInference } from "@huggingface/inference";
 
-const hf = new HfInference(process.env.HUGGINGFACE_API_KEY || process.env.HUGGINGFACE_API_TOKEN);
+const hf = new HfInference(process.env.HUGGINGFACE_TOKEN || process.env.HUGGINGFACE_API_KEY || process.env.HUGGINGFACE_API_TOKEN);
 
 export class HuggingFaceService {
     /**
