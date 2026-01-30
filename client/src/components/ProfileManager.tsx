@@ -753,7 +753,7 @@ export function ProfileManager() {
                   value={formData.psychologicalProfile.mainInterests.join(", ")}
                   onChange={(e) => {
                     const value = e.target.value;
-                    const interests = value.split(',').map(i => i.trim()).filter(Boolean);
+                    const interests = value.split(',').map(i => i.trim());
                     setFormData(prev => ({
                       ...prev,
                       psychologicalProfile: { 
@@ -773,7 +773,7 @@ export function ProfileManager() {
                   value={formData.psychologicalProfile.coreValues.join(", ")}
                   onChange={(e) => {
                     const value = e.target.value;
-                    const values = value.split(',').map(i => i.trim()).filter(Boolean);
+                    const values = value.split(',').map(i => i.trim());
                     setFormData(prev => ({
                       ...prev,
                       psychologicalProfile: { 
@@ -897,7 +897,7 @@ export function ProfileManager() {
                   value={formData.generationSettings.visualStyle.colorPalette.join(", ")}
                   onChange={(e) => {
                     const value = e.target.value;
-                    const colors = value.split(',').map(c => c.trim()).filter(Boolean);
+                    const colors = value.split(',').map(c => c.trim());
                     setFormData(prev => ({
                       ...prev,
                       generationSettings: {
