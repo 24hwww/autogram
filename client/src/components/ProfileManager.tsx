@@ -920,7 +920,7 @@ export function ProfileManager() {
                   value={formData.generationSettings.contentRestrictions.join(", ")}
                   onChange={(e) => {
                     const value = e.target.value;
-                    const restrictions = value.split(',').map(r => r.trim()).filter(Boolean);
+                    const restrictions = value.split(',').map(r => r.trim());
                     setFormData(prev => ({
                       ...prev,
                       generationSettings: { 
