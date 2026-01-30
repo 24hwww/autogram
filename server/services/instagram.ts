@@ -59,9 +59,18 @@ export class InstagramService {
                 // Restore session - REUTILIZAR SIEMPRE
                 await ig.state.deserialize(sessionData.state);
                 
+                // Human-like activity check instead of full login
+                try {
+                    await ig.user.info(ig.state.cookieUserId);
+                    this.isConnected = true;
+                } catch (e) {
+                    console.log('🔍 Instagram: Loaded session seems expired, will need manual login');
+                    this.isConnected = false;
+                }
+                
                 this.sessionValid = true;
                 this.sessionInitialized = true;
-                console.log('✅ Instagram: Session loaded successfully');
+                console.log('✅ Instagram: Session processing completed');
                 return true;
             }
 
@@ -184,14 +193,22 @@ export class InstagramService {
         ig.state.generateDevice(username);
         
         // Human-like delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 5000 + Math.random() * 5000));
 
         try {
+            await ig.simulate.preLoginFlow();
+            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
+            
             // Login único - NUNCA REINTENTAR
             await ig.account.login(username, password);
             
             console.log('✅ Instagram: Login successful!');
             
+            process.nextTick(async () => {
+                await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 4000));
+                await ig.simulate.postLoginFlow();
+            });
+
             // Guardar sesión inmediatamente
             await this.saveSession();
             
@@ -267,7 +284,7 @@ export class InstagramService {
             }
 
             // Human-like delay antes de publicar
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise(resolve => setTimeout(resolve, 5000 + Math.random() * 10000));
 
             const caption = image.caption || image.prompt;
 

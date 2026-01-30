@@ -5,6 +5,7 @@ import { ProfileService } from "./profile";
 export class ImageGeneratorService {
     /**
      * Generates a 1080x1080 image with centered text suitable for Instagram.
+     * Uses Sharp for high-performance, free image generation on Replit.
      * @param text The text (verse/quote) to render
      * @param author Optional author/reference
      * @returns Buffer of the PNG image

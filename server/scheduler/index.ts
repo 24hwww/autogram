@@ -17,6 +17,10 @@ export function startScheduler(intervalMs: number = 60000) {
   
   schedulerInterval = setInterval(async () => {
     try {
+      // Add random jitter to avoid fixed patterns
+      const jitter = Math.floor(Math.random() * 15000);
+      await new Promise(resolve => setTimeout(resolve, jitter));
+
       console.log("Scheduler: Checking for images to publish...");
       const imagesToPublish = await storage.getScheduledImagesToPublish();
 
