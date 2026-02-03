@@ -146,7 +146,7 @@ export async function registerRoutes(
   });
 
   // Generate Prompt Only
-  app.post(api.generate.prompt.path, async (req, res) => {
+  app.post(api.generate.prompt.path, requireAuth, async (req, res) => {
     try {
       const input = api.generate.prompt.input.parse(req.body);
       const { ContentGenerator } = await import("./automation/contentGenerator");
@@ -218,7 +218,7 @@ export async function registerRoutes(
   });
 
   // Full Auto-Generation Workflow
-  app.post(api.generate.full.path, async (req, res) => {
+  app.post(api.generate.full.path, requireAuth, async (req, res) => {
     try {
       const input = api.generate.full.input.parse(req.body);
       const { Orchestrator } = await import("./automation/orchestrator");
@@ -285,7 +285,7 @@ export async function registerRoutes(
   });
 
   // Scheduler Control Endpoints
-  app.get(api.scheduler.status.path, async (req, res) => {
+  app.get(api.scheduler.status.path, requireAuth, async (req, res) => {
     try {
       const { getSchedulerStatus } = await import("./scheduler");
       const status = getSchedulerStatus();
@@ -303,7 +303,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.scheduler.updateInterval.path, async (req, res) => {
+  app.post(api.scheduler.updateInterval.path, requireAuth, async (req, res) => {
     try {
       const input = api.scheduler.updateInterval.input.parse(req.body);
       const { updateSchedulerInterval } = await import("./scheduler");
@@ -320,7 +320,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.scheduler.trigger.path, async (req, res) => {
+  app.post(api.scheduler.trigger.path, requireAuth, async (req, res) => {
     try {
       const { triggerScheduler } = await import("./scheduler");
       const result = await triggerScheduler();
@@ -402,7 +402,7 @@ export async function registerRoutes(
   });
 
   // Get Limits (Public)
-  app.get(api.limits.get.path, async (req, res) => {
+  app.get(api.limits.get.path, requireAuth, async (req, res) => {
     const today = getTodayDate();
     const usage = await storage.getUsageLimit(today);
 
@@ -425,7 +425,7 @@ export async function registerRoutes(
   // ===== ENDPOINTS DE GESTIÓN DE PERFILES =====
 
   // Crear nuevo perfil
-  app.post("/api/profiles", async (req, res) => {
+  app.post("/api/profiles", requireAuth, async (req, res) => {
     try {
       console.log("🔍 API: Recibiendo request para crear perfil:", JSON.stringify(req.body, null, 2));
       
@@ -457,7 +457,7 @@ export async function registerRoutes(
   });
 
   // Obtener todos los perfiles
-  app.get("/api/profiles", async (req, res) => {
+  app.get("/api/profiles", requireAuth, async (req, res) => {
     try {
       const result = await ProfileService.getAllProfiles();
       
@@ -476,7 +476,7 @@ export async function registerRoutes(
   });
 
   // Obtener perfil por ID
-  app.get("/api/profiles/:id", async (req, res) => {
+  app.get("/api/profiles/:id", requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const result = await ProfileService.getProfileById(id);
@@ -493,7 +493,7 @@ export async function registerRoutes(
   });
 
   // Obtener perfil activo
-  app.get("/api/profiles/active", async (req, res) => {
+  app.get("/api/profiles/active", requireAuth, async (req, res) => {
     try {
       const result = await ProfileService.getActiveProfile();
       
@@ -509,7 +509,7 @@ export async function registerRoutes(
   });
 
   // Actualizar perfil
-  app.put("/api/profiles/:id", async (req, res) => {
+  app.put("/api/profiles/:id", requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const updateData = req.body;
@@ -527,7 +527,7 @@ export async function registerRoutes(
   });
 
   // Activar perfil (desactiva los demás)
-  app.post("/api/profiles/:id/activate", async (req, res) => {
+  app.post("/api/profiles/:id/activate", requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const result = await ProfileService.activateProfile(id);
@@ -544,7 +544,7 @@ export async function registerRoutes(
   });
 
   // Eliminar perfil
-  app.delete("/api/profiles/:id", async (req, res) => {
+  app.delete("/api/profiles/:id", requireAuth, async (req, res) => {
     try {
       const id = Number(req.params.id);
       const result = await ProfileService.deleteProfile(id);

@@ -44,6 +44,9 @@ server/public/
 attached_assets/
 vite.config.ts.*
 *.tar.gz
+data/*.db
+data/instagram-session.json
+client/public/generated_images
 
 # Next.js (if applicable)
 .next/
