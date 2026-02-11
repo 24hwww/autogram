@@ -7,9 +7,13 @@ import Dashboard from "@/pages/Dashboard";
 import LoginPage from "@/pages/LoginPage";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useImageCleanup } from "@/hooks/use-image-cleanup";
 
 function Router() {
-  const { user, isLoading, is2FAVerified } = useAuth();
+  const { isLoading } = useAuth();
+  
+  // Run image cleanup when user is authenticated
+  useImageCleanup();
 
   if (isLoading) {
     return (

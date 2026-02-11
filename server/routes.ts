@@ -13,6 +13,7 @@ import { requireAuth } from "./auth";
 import crypto from "crypto";
 import { broadcast } from "./ws";
 import { ProfileService } from "./services/profile";
+import { ImageCleanupService } from "./services/imageCleanup";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -422,6 +423,34 @@ export async function registerRoutes(
     });
   });
 
+  // ===== ENDPOINTS DE LIMPIEZA DE IMÁGENES =====
+
+  // Limpiar imágenes antiguas manualmente
+  app.post("/api/cleanup/images", requireAuth, async (req, res) => {
+    try {
+      await ImageCleanupService.performCleanup();
+      res.json({ success: true, message: "Image cleanup completed" });
+    } catch (error: any) {
+      console.error("Manual cleanup error:", error);
+      res.status(500).json({ message: error.message || "Failed to cleanup images" });
+    }
+  });
+
+  // Obtener estado del servicio de limpieza
+  app.get("/api/cleanup/status", requireAuth, async (req, res) => {
+    try {
+      res.json({
+        redisAvailable: ImageCleanupService.isRedisAvailable(),
+        message: ImageCleanupService.isRedisAvailable() 
+          ? "Scheduled cleanup enabled (daily at 2 AM)"
+          : "Running startup cleanup only"
+      });
+    } catch (error: any) {
+      console.error("Cleanup status error:", error);
+      res.status(500).json({ message: error.message || "Failed to get cleanup status" });
+    }
+  });
+
   // ===== ENDPOINTS DE GESTIÓN DE PERFILES =====
 
   // Crear nuevo perfil
@@ -576,6 +605,9 @@ export async function registerRoutes(
 
   // Start background tasks (except Instagram)
   startScheduler();
+
+  // Initialize image cleanup service
+  await ImageCleanupService.init();
 
   // Start Instagram connection last after everything else is ready
   setTimeout(async () => {
