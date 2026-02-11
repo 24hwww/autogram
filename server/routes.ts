@@ -475,6 +475,22 @@ export async function registerRoutes(
     }
   });
 
+  // Obtener perfil activo
+  app.get("/api/profiles/active", async (req, res) => {
+    try {
+      const result = await ProfileService.getActiveProfile();
+      
+      if (!result.success) {
+        return res.status(404).json({ message: result.error });
+      }
+      
+      res.json(result.data);
+    } catch (error: any) {
+      console.error("Get active profile error:", error);
+      res.status(500).json({ message: error.message || "Failed to get active profile" });
+    }
+  });
+
   // Obtener perfil por ID
   app.get("/api/profiles/:id", async (req, res) => {
     try {
@@ -489,22 +505,6 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Get profile error:", error);
       res.status(500).json({ message: error.message || "Failed to get profile" });
-    }
-  });
-
-  // Obtener perfil activo
-  app.get("/api/profiles/active", async (req, res) => {
-    try {
-      const result = await ProfileService.getActiveProfile();
-      
-      if (!result.success) {
-        return res.status(404).json({ message: result.error });
-      }
-      
-      res.json(result.data);
-    } catch (error: any) {
-      console.error("Get active profile error:", error);
-      res.status(500).json({ message: error.message || "Failed to get active profile" });
     }
   });
 
