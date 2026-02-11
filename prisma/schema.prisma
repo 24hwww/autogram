@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./data/autogram.db"
+}
+
+model Image {
+  id                Int      @id @default(autoincrement())
+  prompt            String
+  caption           String?
+  imagePath         String   @map("image_path")
+  status            ImageStatus @default(PENDING)
+  scheduledAt       DateTime? @map("scheduled_at")
+  instagramMediaId   String?  @map("instagram_media_id")
+  error             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  publishedAt       DateTime? @map("published_at")
+  autoSchedule      Boolean  @default(false) @map("auto_schedule")
+  scheduleInterval  Int?     @map("schedule_interval")
+  isCarousel        Boolean  @default(false) @map("is_carousel")
+  imagePaths        String?  @map("image_paths") // JSON string
+
+  @@map("images")
+}
+
+model UsageLimit {
+  id               Int      @id @default(autoincrement())
+  date             String   @unique
+  imagesGenerated  Int      @default(0) @map("images_generated")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("usage_limits")
+}
+
+model Chat {
+  id        Int      @id @default(autoincrement())
+  sessionId String   @map("session_id")
+  role      String
+  content   String
+  timestamp DateTime @default(now())
+
+  @@map("chats")
+}
+
+enum ImageStatus {
+  PENDING
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+model InfluencerProfile {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  personality         String
+  physicalDescription String?
+  activities          String?
+  tone                String   @default("engaging")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("influencer_profiles")
+}
+
+// ===== NUEVO MODELO PROFILE =====
+model Profile {
+  id                  Int      @id @default(autoincrement())
+  
+  // Identidad general (JSON)
+  identity            String   // JSON de GeneralIdentity
+  
+  // Descripción forense (JSON)
+  forensicDescription String   // JSON de ForensicDescription
+  
+  // Perfil psicológico (JSON)
+  psychologicalProfile String  // JSON de PsychologicalProfile
+  
+  // Metadatos
+  isActive            Boolean  @default(false) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  // Configuración de generación (JSON)
+  generationSettings  String   // JSON de GenerationSettings
+
+  @@map("profiles")
+}
+
+model Conversation {
+  id        Int      @id @default(autoincrement())
+  title     String
+  createdAt DateTime @default(now())
+
+  messages Message[]
+  @@map("conversations")
+}
+
+model Message {
+  id            Int      @id @default(autoincrement())
+  conversationId Int
+  role          String
+  content       String
+  timestamp     DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  @@map("messages")
+}

@@ -1,6 +1,69 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production / Build
+dist/
+dist-server/
+build/
+.cache/
+
+# Environment variables (CRITICAL: Do not commit these!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+*.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor/System Files
 .DS_Store
-server/public
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.replit
+replit.md
+
+# Application Specific
+server/public/
+attached_assets/
 vite.config.ts.*
 *.tar.gz
+data/*.db
+data/instagram-session.json
+client/public/generated_images
+
+# Next.js (if applicable)
+.next/
+out/
+
+# Docker
+.docker/
+# Note: DO NOT ignore Dockerfile or docker-compose.yml as they are part of the infra
+
+# Database / Drizzle
+migrations/
+# Only ignore if you want to keep migrations local, but usually they are committed.
+# Keeping it here as a comment.
+# /migrations
+
+# OS temporary files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+/generated/prisma

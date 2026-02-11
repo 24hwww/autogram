@@ -1,6 +1,12 @@
 import { useLimits } from "@/hooks/use-images";
 import { Progress } from "@/components/ui/progress";
-import { Zap } from "lucide-react";
+import { Zap, CheckCircle2, XCircle, Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function LimitCounter() {
   const { data: limits, isLoading } = useLimits();
@@ -37,11 +43,53 @@ export function LimitCounter() {
 
         <div className="space-y-2">
           <Progress value={percentage} className="h-2 bg-secondary" />
-          <p className="text-xs text-muted-foreground text-center">
-            {isFull 
-              ? "You've reached your daily limit. Try again tomorrow!" 
-              : "Generations reset daily at midnight UTC"}
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-xs text-muted-foreground">
+              {isFull 
+                ? "Limit reached. Reset at midnight UTC" 
+                : "Generations reset daily at midnight UTC"}
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-white/5 space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground flex items-center gap-1">
+              Instagram Status
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="hover:text-foreground transition-colors">
+                      <Info className="w-3 h-3 cursor-help" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[200px] text-[11px]">
+                    You can still generate and schedule images. Manual publishing is available once connected.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </span>
+            <div className="flex items-center gap-1.5 font-medium">
+              {limits.instagramConnected ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                  <span className="text-green-500">Connected</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-destructive">Disconnected</span>
+                </>
+              )}
+            </div>
+          </div>
+          
+          {!limits.instagramConnected && limits.instagramError && (
+            <div className="text-[10px] text-destructive/80 leading-tight bg-destructive/5 p-2 rounded border border-destructive/10">
+              <p className="font-semibold mb-0.5">Connection Error:</p>
+              {limits.instagramError}
+            </div>
+          )}
         </div>
       </div>
     </div>
