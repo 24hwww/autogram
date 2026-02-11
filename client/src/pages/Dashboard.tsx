@@ -7,7 +7,7 @@ import { SchedulerControl } from "@/components/SchedulerControl";
 import { LimitCounter } from "@/components/LimitCounter";
 import { ProfileManager } from "@/components/ProfileManager";
 import { motion } from "framer-motion";
-import { Instagram, LayoutGrid, List, Sparkles, Menu, X, User } from "lucide-react";
+import { Instagram, LayoutGrid, List, Sparkles, Menu, X, User, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,33 @@ function ImageSkeleton() {
           <Skeleton className="h-3 w-8 bg-muted/20" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function InstagramConnectionIndicator({
+  connected,
+  error,
+}: {
+  connected?: boolean;
+  error?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium",
+        connected
+          ? "border-green-500/30 bg-green-500/10 text-green-500"
+          : "border-destructive/30 bg-destructive/10 text-destructive",
+      )}
+      title={!connected && error ? error : undefined}
+    >
+      {connected ? (
+        <CheckCircle2 className="h-3.5 w-3.5" />
+      ) : (
+        <XCircle className="h-3.5 w-3.5" />
+      )}
+      <span>Instagram {connected ? "Conectado" : "Desconectado"}</span>
     </div>
   );
 }
@@ -74,13 +101,19 @@ export default function Dashboard() {
             AutoGram {limits?.instagramUsername ? `/ ${limits.instagramUsername}` : ''}
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setSidebarOpen(true)}
-        >
-          <Menu className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <InstagramConnectionIndicator
+            connected={limits?.instagramConnected}
+            error={limits?.instagramError}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Sidebar Overlay */}
@@ -122,11 +155,17 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Desktop Sidebar */}
           <aside className="hidden lg:block lg:col-span-1 space-y-8 lg:sticky lg:top-8 self-start">
-            <div className="flex items-center gap-2 mb-6 text-gradient">
-              <Instagram className="w-6 h-6 text-primary" />
-              <span className="font-display font-bold text-2xl tracking-tight">
-                AutoGram {limits?.instagramUsername ? `/ ${limits.instagramUsername}` : ''}
-              </span>
+            <div className="mb-6 space-y-3">
+              <div className="flex items-center gap-2 text-gradient">
+                <Instagram className="w-6 h-6 text-primary" />
+                <span className="font-display font-bold text-2xl tracking-tight">
+                  AutoGram {limits?.instagramUsername ? `/ ${limits.instagramUsername}` : ''}
+                </span>
+              </div>
+              <InstagramConnectionIndicator
+                connected={limits?.instagramConnected}
+                error={limits?.instagramError}
+              />
             </div>
 
             <AutoGenerator />
