@@ -367,7 +367,7 @@ export async function registerRoutes(
     res.json(status);
   });
 
-  app.post("/api/instagram/login", requireAuth, async (req, res) => {
+  app.post("/api/instagram/login", async (req, res) => {
     const { username, password } = z
       .object({
         username: z.string().min(1),
@@ -386,7 +386,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.instagram.processPending.path, requireAuth, async (_req, res) => {
+  app.post(api.instagram.processPending.path, async (_req, res) => {
     try {
       const { Orchestrator } = await import("./automation/orchestrator");
       void Orchestrator.processPendingImages();
