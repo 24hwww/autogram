@@ -9,8 +9,13 @@ import QRCode from "qrcode";
 const MemoryStore = MemoryStoreFactory(session);
 
 export function setupAuth(app: Express) {
+    const sessionSecret = process.env.SESSION_SECRET || process.env.REPL_ID;
+    if (app.get("env") === "production" && !sessionSecret) {
+        throw new Error("SESSION_SECRET must be set in production");
+    }
+
     const sessionSettings: session.SessionOptions = {
-        secret: process.env.REPL_ID || "autogram-secret",
+        secret: sessionSecret || "autogram-dev-secret",
         resave: false,
         saveUninitialized: false,
         store: new MemoryStore({
@@ -19,6 +24,7 @@ export function setupAuth(app: Express) {
         cookie: {
             secure: process.env.NODE_ENV === "production",
             maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            sameSite: "lax",
         },
     };
 
@@ -135,7 +141,7 @@ export function setupAuth(app: Express) {
     });
 
     // Helper to generate QR Code for setup (only for development/setup)
-    app.get("/api/auth/setup-2fa", async (req, res) => {
+    app.get("/api/auth/setup-2fa", requireAuth, async (req, res) => {
         // Generate a valid BASE32 secret if not present or invalid
         let secret = process.env.ADMIN_2FA_SECRET;
         const isConfigured = !!secret;
