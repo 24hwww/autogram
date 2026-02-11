@@ -1,4 +1,4 @@
-import { useImages, useLimits } from "@/hooks/use-images";
+import { useImages, useInstagramLogin, useInstagramProcessPending, useLimits } from "@/hooks/use-images";
 // import { useAuth } from "@/hooks/use-auth"; // Comentado - no requerimos autenticación
 import { useWebSocket } from "@/hooks/use-websocket";
 import { ImageCard } from "@/components/ImageCard";
@@ -7,13 +7,16 @@ import { SchedulerControl } from "@/components/SchedulerControl";
 import { LimitCounter } from "@/components/LimitCounter";
 import { ProfileManager } from "@/components/ProfileManager";
 import { motion } from "framer-motion";
-import { Instagram, LayoutGrid, List, Sparkles, Menu, X, User, CheckCircle2, XCircle } from "lucide-react";
+import { Instagram, LayoutGrid, List, Sparkles, Menu, X, User, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useMutationState } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 function ImageSkeleton() {
   return (
@@ -37,20 +40,37 @@ function ImageSkeleton() {
 function InstagramConnectionIndicator({
   connected,
   error,
+  onDisconnectedClick,
 }: {
   connected?: boolean;
   error?: string;
+  onDisconnectedClick?: () => void;
 }) {
+  const disconnected = !connected;
+  const className = cn(
+    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium",
+    connected
+      ? "border-green-500/30 bg-green-500/10 text-green-500"
+      : "border-destructive/30 bg-destructive/10 text-destructive",
+    disconnected ? "cursor-pointer transition hover:opacity-85" : undefined,
+  );
+
+  if (disconnected && onDisconnectedClick) {
+    return (
+      <button
+        type="button"
+        className={className}
+        title={error || "Click to connect Instagram"}
+        onClick={onDisconnectedClick}
+      >
+        <XCircle className="h-3.5 w-3.5" />
+        <span>Instagram Desconectado</span>
+      </button>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium",
-        connected
-          ? "border-green-500/30 bg-green-500/10 text-green-500"
-          : "border-destructive/30 bg-destructive/10 text-destructive",
-      )}
-      title={!connected && error ? error : undefined}
-    >
+    <div className={className} title={!connected && error ? error : undefined}>
       {connected ? (
         <CheckCircle2 className="h-3.5 w-3.5" />
       ) : (
@@ -75,6 +95,12 @@ export default function Dashboard() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'gallery' | 'profiles'>('gallery');
+  const [instagramModalOpen, setInstagramModalOpen] = useState(false);
+  const [instagramUsername, setInstagramUsername] = useState("");
+  const [instagramPassword, setInstagramPassword] = useState("");
+  const instagramLogin = useInstagramLogin();
+  const instagramProcessPending = useInstagramProcessPending();
+  const isInstagramSubmitting = instagramLogin.isPending || instagramProcessPending.isPending;
 
   if (isLoading) {
     return (
@@ -91,8 +117,81 @@ export default function Dashboard() {
     new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
   ) : [];
 
+  const handleInstagramConnect = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      await instagramLogin.mutateAsync({
+        username: instagramUsername.trim(),
+        password: instagramPassword,
+      });
+      await instagramProcessPending.mutateAsync();
+      setInstagramPassword("");
+      setInstagramModalOpen(false);
+    } catch {
+      // Errors are surfaced by mutation toasts.
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
+      <Dialog open={instagramModalOpen} onOpenChange={setInstagramModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conectar cuenta de Instagram</DialogTitle>
+            <DialogDescription>
+              Ingresa usuario y contraseña para iniciar sesión manualmente. La sesión se guarda para reutilizarla y reducir bloqueos/restricciones.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={handleInstagramConnect}>
+            <div className="space-y-2">
+              <Label htmlFor="instagram-username">Usuario</Label>
+              <Input
+                id="instagram-username"
+                value={instagramUsername}
+                onChange={(e) => setInstagramUsername(e.target.value)}
+                placeholder="tu_usuario"
+                autoComplete="username"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instagram-password">Contraseña</Label>
+              <Input
+                id="instagram-password"
+                type="password"
+                value={instagramPassword}
+                onChange={(e) => setInstagramPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setInstagramModalOpen(false)}
+                disabled={isInstagramSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isInstagramSubmitting}>
+                {isInstagramSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Conectando...
+                  </>
+                ) : (
+                  "Conectar"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Mobile Header */}
       <div className="lg:hidden flex items-center justify-between p-4 border-b border-border/60">
         <div className="flex items-center gap-2">
@@ -105,6 +204,7 @@ export default function Dashboard() {
           <InstagramConnectionIndicator
             connected={limits?.instagramConnected}
             error={limits?.instagramError}
+            onDisconnectedClick={() => setInstagramModalOpen(true)}
           />
           <Button
             variant="ghost"
@@ -165,6 +265,7 @@ export default function Dashboard() {
               <InstagramConnectionIndicator
                 connected={limits?.instagramConnected}
                 error={limits?.instagramError}
+                onDisconnectedClick={() => setInstagramModalOpen(true)}
               />
             </div>
 

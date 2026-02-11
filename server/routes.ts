@@ -386,6 +386,21 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.instagram.processPending.path, requireAuth, async (_req, res) => {
+    try {
+      const { Orchestrator } = await import("./automation/orchestrator");
+      void Orchestrator.processPendingImages();
+      res.json({
+        success: true,
+        message: "Pending images processing queued",
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to process pending images",
+      });
+    }
+  });
+
   // Schedule
   app.post(api.images.schedule.path, requireAuth, async (req, res) => {
     const id = Number(req.params.id);

@@ -10,6 +10,19 @@ import crypto from "crypto";
 import { broadcast } from "../ws";
 
 export class Orchestrator {
+    private static pendingProcessing = false;
+    private static readonly initialDelayMinMs = 30000;
+    private static readonly initialDelayMaxMs = 90000;
+    private static readonly betweenPostsDelayMinMs = 120000;
+    private static readonly betweenPostsDelayMaxMs = 360000;
+
+    private static sleep(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    private static randomMs(min: number, max: number): number {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
 
     /**
      * Main entry point: Generates a new post from scratch and attempts to publish/schedule it.
@@ -123,12 +136,23 @@ export class Orchestrator {
      * Process all pending images when Instagram becomes available
      */
     static async processPendingImages() {
+        if (this.pendingProcessing) {
+            console.log("⏳ Pending processor already running. Skipping duplicate trigger.");
+            return;
+        }
+
+        this.pendingProcessing = true;
         try {
             console.log("🔄 Processing pending images...");
 
             // Get all pending images
-            const pendingImages = await storage.getAllImages().then(images =>
-                images.filter(img => img.status === 'PENDING')
+            const pendingImages = await storage.getAllImages().then(images => images
+                .filter(img => img.status === 'PENDING')
+                .sort((a, b) => {
+                    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                    return aTime - bTime;
+                })
             );
 
             if (pendingImages.length === 0) {
@@ -137,10 +161,14 @@ export class Orchestrator {
             }
 
             console.log(`📋 Found ${pendingImages.length} pending images`);
+            const initialDelay = this.randomMs(this.initialDelayMinMs, this.initialDelayMaxMs);
+            console.log(`🕒 Initial human-like delay before first publish: ${Math.round(initialDelay / 1000)}s`);
+            await this.sleep(initialDelay);
 
-            for (const image of pendingImages) {
+            for (let index = 0; index < pendingImages.length; index++) {
+                const image = pendingImages[index];
                 try {
-                    console.log(`⏳ Processing pending image ${image.id}...`);
+                    console.log(`⏳ Processing pending image ${image.id} (${index + 1}/${pendingImages.length})...`);
 
                     // Update status to scheduled
                     await storage.updateImage(image.id, {
@@ -158,11 +186,19 @@ export class Orchestrator {
                         error: error instanceof Error ? error.message : 'Unknown error'
                     });
                 }
+
+                if (index < pendingImages.length - 1) {
+                    const delayMs = this.randomMs(this.betweenPostsDelayMinMs, this.betweenPostsDelayMaxMs);
+                    console.log(`⏱️ Waiting ${Math.round(delayMs / 1000)}s before next pending publish`);
+                    await this.sleep(delayMs);
+                }
             }
 
             console.log("✅ Pending images processing completed");
         } catch (error) {
             console.error("❌ Error processing pending images:", error);
+        } finally {
+            this.pendingProcessing = false;
         }
     }
 

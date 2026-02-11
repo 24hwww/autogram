@@ -186,6 +186,17 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    processPending: {
+      method: 'POST' as const,
+      path: '/api/instagram/process-pending',
+      responses: {
+        200: z.object({
+          success: z.boolean(),
+          message: z.string(),
+        }),
+        500: errorSchemas.server,
+      },
+    },
     cookies: {
       method: 'POST' as const,
       path: '/api/instagram/cookies',

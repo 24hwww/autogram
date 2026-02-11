@@ -86,6 +86,41 @@ export function useInstagramLogin() {
   });
 }
 
+export function useInstagramProcessPending() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(api.instagram.processPending.path, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to process pending images");
+      }
+
+      return api.instagram.processPending.responses[200].parse(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.images.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.limits.get.path] });
+      toast({
+        title: "Instagram",
+        description: "Started processing pending auto-generated images",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Pending processing failed",
+        description: error.message,
+      });
+    },
+  });
+}
+
 export function useLimits() {
   return useQuery({
     queryKey: [api.limits.get.path],
